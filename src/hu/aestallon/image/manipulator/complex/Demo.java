@@ -17,7 +17,7 @@ public class Demo {
         ImageIO.write(dragon, "jpg", new File("resources/outputImages/dragon_negative.jpg"));
 
         BufferedImage fox = ImageIO.read(new File("resources/inputImages/fox.jpg"));
-        new ImageManipulator(fox).makeGreyScaled();
+        new ImageManipulator(fox).makeGreyScale();
         ImageIO.write(fox, "jpg", new File("resources/outputImages/fox_grey.jpg"));
     }
 }

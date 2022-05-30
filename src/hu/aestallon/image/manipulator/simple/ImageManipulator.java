@@ -6,7 +6,9 @@ import java.util.concurrent.RecursiveAction;
 import java.util.function.IntUnaryOperator;
 
 public class ImageManipulator {
+    /** The pixel count of a tile which is processed directly. */
     private static final int MAX_TILE_SIZE = 100;
+
     private final BufferedImage image;
 
     /**
@@ -25,8 +27,12 @@ public class ImageManipulator {
      * stored in this instance, and no new 'result' image is created!
      */
     public void makeNegative() {
+        // A stratégia: vegyünk egy aRGB értékeket tartalmazó integert,
+        // vonjuk ki 255-ből mind az r, g és b értékeket, majd adjuk
+        // vissza (az alphát nem piszkáljuk).
         final IntUnaryOperator invertRgb = argb ->
                 0xFFFFFF - (argb & 0xFFFFFF) + (argb & 0xFF000000);
+        // Meghívjuk a fork-join keretrendszert a fenti stratégiával:
         manipulateWith(invertRgb);
     }
 
@@ -36,7 +42,7 @@ public class ImageManipulator {
      * <p><b>Note:</b> The modification is performed on the image
      * stored in this instance, and no new 'result' image is created!
      */
-    public void makeGreyScaled() {
+    public void makeGreyScale() {
         final IntUnaryOperator greyPixel = argb -> {
             int a = (argb >> 24) & 0xFF;
             int r = (argb >> 16) & 0xFF;
@@ -51,10 +57,14 @@ public class ImageManipulator {
 
     private void manipulateWith(IntUnaryOperator pixelTransformer) {
         ForkJoinPool pool = ForkJoinPool.commonPool();
+        // A RecursiveAction implementáció megkapja a "stratégiát", egyfajta
+        // dependency injection:
         ImageManipulationAction action = new ImageManipulationAction(pixelTransformer);
         pool.invoke(action);
     }
 
+    // A RecursiveAction implementáció példányszintű (non-static), így nem kell
+    // minden egyes példányának "feleslegesen" tárolnia a referenciát az image-re.
     private class ImageManipulationAction extends RecursiveAction {
         private final IntUnaryOperator pixelTransformer;
         private final int xFrom;
@@ -74,6 +84,9 @@ public class ImageManipulator {
             this.yTo = yTo;
         }
 
+        // A rekurzió triviális esete (amikor nincs rekurzió):
+        // Végigmegyünk valamennyi pixelen, és végrehajtjuk a
+        // "stratégiát":
         private void transformTile() {
             for (int y = yFrom; y < yTo; y++) {
                 for (int x = xFrom; x < xTo; x++) {

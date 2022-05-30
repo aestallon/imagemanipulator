@@ -6,22 +6,41 @@ import java.util.concurrent.RecursiveAction;
 import java.util.function.ToIntFunction;
 
 public class ImageManipulator {
-    private static final int MIN_PIXEL_COUNT = 100;
+    /** The pixel count of a tile which is processed directly. */
+    private static final int MAX_TILE_SIZE = 100;
+
     private final BufferedImage image;
 
+    /**
+     * Creates a new instance with the provided image.
+     *
+     * @param image a {@code BufferedImage}
+     */
     public ImageManipulator(BufferedImage image) {
         this.image = image;
     }
 
+    /**
+     * Inverts the colours of the stored image.
+     *
+     * <p><b>Note:</b> The modification is performed on the image
+     * stored in this instance, and no new 'result' image is created!
+     */
     public void makeNegative() {
-        final ToIntFunction<int[]> negatePixel = argb ->
-                0xFFFFFF - (argb[0] & 0xFFFFFF) + (argb[0] & 0xFF000000);
+        final ToIntFunction<int[]> negatePixel = onePixelArray ->
+                0xFFFFFF - (onePixelArray[0] & 0xFFFFFF) + (onePixelArray[0] & 0xFF000000);
         manipulateWith(new PixelToPixelManipulationAction(negatePixel));
     }
 
-    public void makeGreyScaled() {
-        final ToIntFunction<int[]> greyPixel = argb -> {
-            int argbValue = argb[0];
+    /**
+     * Creates a simple greyscale version of the stored image.
+     *
+     * <p><b>Note:</b> The modification is performed on the image
+     * stored in this instance, and no new 'result' image is created!
+     */
+    public void makeGreyScale() {
+        final ToIntFunction<int[]> greyPixel = onePixelArray -> {
+            int argbValue = onePixelArray[0];
             int a = (argbValue >> 24) & 0xFF;
             int r = (argbValue >> 16) & 0xFF;
             int g = (argbValue >> 8) & 0xFF;
@@ -33,10 +52,20 @@ public class ImageManipulator {
         manipulateWith(new PixelToPixelManipulationAction(greyPixel));
     }
 
+    /**
+     * Blurs the stored image.
+     *
+     * <p>The blur is performed by averaging the colours of the
+     * image's pixel in tiles not larger than {@link #MAX_TILE_SIZE}.
+     *
+     * <p><b>Note:</b> The modification is performed on the image
+     * stored in this instance, and no new 'result' image is created!
+     */
     public void blur() {
         final ToIntFunction<int[]> blur = tilePixels -> {
             int aSum = 0, rSum = 0, gSum = 0, bSum = 0;
             int pixelCount = tilePixels.length;
+
             for (int pixel : tilePixels) {
                 int a = (pixel >> 24) & 0xFF;
                 int r = (pixel >> 16) & 0xFF;
@@ -47,6 +76,7 @@ public class ImageManipulator {
                 gSum += g;
                 bSum += b;
             }
+
             int aResult = aSum / pixelCount;
             int rResult = rSum / pixelCount;
             int gResult = gSum / pixelCount;
@@ -86,7 +116,7 @@ public class ImageManipulator {
             int actWidth = xTo - xFrom;
             int actHeight = yTo - yFrom;
             int pixelCount = actHeight * actWidth;
-            if (pixelCount < MIN_PIXEL_COUNT) transformTile();
+            if (pixelCount < MAX_TILE_SIZE) transformTile();
             else invokeAll(
                     constructNew(pixelTransformer, xFrom, xFrom + (actWidth / 2), yFrom, yFrom + (actHeight / 2)),
                     constructNew(pixelTransformer, xFrom, xFrom + (actWidth / 2), yFrom + (actHeight / 2), yTo),
@@ -96,6 +126,10 @@ public class ImageManipulator {
         }
     }
 
+    // The pixelTransformer's argument must be an int[1] containing the pixel's
+    // old aRGB value as the only entry.
+    // This and general implementation instruction would be included in the
+    // Javadoc-comment _here_ under the tag "Implementation Note:".
     private final class PixelToPixelManipulationAction extends ImageManipulationAction {
         private PixelToPixelManipulationAction(ToIntFunction<int[]> pixelTransformer) {
             this(pixelTransformer, 0, image.getWidth(), 0, image.getHeight());
@@ -138,7 +172,8 @@ public class ImageManipulator {
             // fill up the array with the pixels' values:
             for (int y = yFrom; y < yTo; y++) {
                 for (int x = xFrom; x < xTo; x++) {
-                    // ezt öröm volt debuggolni :)
+                    // put the integer representing the current pixel's
+                    // aRGB value into a unique position in the tile[]:
                     tile[(x - xFrom) + (xTo - xFrom) * (y - yFrom)] = image.getRGB(x, y);
                 }
             }
