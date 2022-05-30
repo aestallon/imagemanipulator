@@ -30,8 +30,7 @@ public class ImageManipulator {
         // A stratégia: vegyünk egy aRGB értékeket tartalmazó integert,
         // vonjuk ki 255-ből mind az r, g és b értékeket, majd adjuk
         // vissza (az alphát nem piszkáljuk).
-        final IntUnaryOperator invertRgb = argb ->
-                0xFFFFFF - (argb & 0xFFFFFF) + (argb & 0xFF000000);
+        final IntUnaryOperator invertRgb = argb -> argb ^ 0x00FFFFFF;
         // Meghívjuk a fork-join keretrendszert a fenti stratégiával:
         manipulateWith(invertRgb);
     }

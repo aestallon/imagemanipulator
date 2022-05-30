@@ -27,8 +27,7 @@ public class ImageManipulator {
      * stored in this instance, and no new 'result' image is created!
      */
     public void makeNegative() {
-        final ToIntFunction<int[]> negatePixel = onePixelArray ->
-                0xFFFFFF - (onePixelArray[0] & 0xFFFFFF) + (onePixelArray[0] & 0xFF000000);
+        final ToIntFunction<int[]> negatePixel = onePixelArray -> onePixelArray[0] ^ 0x00FFFFFF;
         manipulateWith(new PixelToPixelManipulationAction(negatePixel));
     }
 
